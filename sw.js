@@ -1,5 +1,5 @@
 /* Sky Below service worker: cache the whole app on first load, serve it offline. */
-const CACHE = 'skybelow-v4';
+const CACHE = 'skybelow-pages-v5';
 const ASSETS = ['./', './index.html', './app.js', './style.css', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './data/geo.js', './data/airports.js', './data/airlines.js', './data/ey13.js'];
 // Reject tunnel interstitials / error pages masquerading as 200s (e.g. a free-tunnel warning screen).
 async function valid(req, r) {
