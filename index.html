@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sky Below">
+<title>Sky Below · In-flight companion</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<style>.norelay{background:#3a2a05;color:#ffd27a;font-size:13px;padding:6px 12px;text-align:center;border-bottom:1px solid #6b4d0a}.norelay[hidden]{display:none}</style>
+</head>
+<body>
+<header class="top">
+  <button id="flightBtn" class="flightchip" aria-label="Change flight"><span id="flightTitle">EY 13</span><small id="flightRoute">AUH → ATL</small></button>
+  <div class="srcwrap"><span id="srcChip" class="chip est" title="Position source">EST</span><span id="netChip" class="chip off">offline</span></div>
+  <button id="settingsBtn" class="iconbtn" aria-label="Settings">⚙︎</button>
+</header>
+
+<div id="noRelayNote" class="norelay" hidden></div>
+<section class="mapwrap">
+  <canvas id="map" aria-label="Map"></canvas>
+  <div class="mapctl">
+    <button id="zoomIn" aria-label="Zoom in">＋</button>
+    <button id="zoomOut" aria-label="Zoom out">－</button>
+    <button id="viewToggle" aria-label="Toggle view">Route</button>
+  </div>
+  <div id="belowBanner" class="belowbanner"><div id="belowMain">—</div><div id="belowSub"></div></div>
+</section>
+
+<section class="stats">
+  <div class="stat"><label>Altitude</label><b id="sAlt">—</b></div>
+  <div class="stat"><label>Ground speed</label><b id="sGs">—</b></div>
+  <div class="stat"><label>Time left</label><b id="sLeft">—</b></div>
+  <div class="stat"><label id="sDistLbl">To ATL</label><b id="sDist">—</b></div>
+  <div class="stat"><label>Local time below</label><b id="sLocal">—</b></div>
+  <div class="stat"><label>Progress</label><b id="sProg">—</b></div>
+  <div class="progress"><i id="progBar"></i></div>
+</section>
+
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="near">What's below</button>
+  <button class="tab" data-tab="next">Coming up</button>
+  <button class="tab" data-tab="live">Live wiki</button>
+</nav>
+<section id="pane-near" class="pane active"><ul id="nearList" class="poilist"></ul></section>
+<section id="pane-next" class="pane"><ul id="nextList" class="poilist"></ul></section>
+<section id="pane-live" class="pane"><p class="hint" id="liveHint">When the phone has internet, this shows Wikipedia articles right below the plane.</p><button id="liveWikiBtn" class="btn">Look up now</button><ul id="liveList" class="poilist"></ul></section>
+
+<section class="estctl" id="estCtl">
+  <div class="row"><label for="offset">Schedule estimate offset</label><span id="offsetVal">0 min</span></div>
+  <input type="range" id="offset" min="-180" max="180" step="5" value="0">
+  <div class="row small"><span id="estInfo"></span><button id="offsetReset" class="link">reset</button></div>
+</section>
+<footer class="foot"><span id="statusLine">Ready</span> · POI text: Wikipedia (CC BY-SA) · Map: Natural Earth</footer>
+
+<!-- Flight search sheet -->
+<div id="flightSheet" class="sheet hidden" role="dialog" aria-label="Flight search">
+  <div class="sheetin">
+    <div class="sheethead"><h2>Track a flight</h2><button class="iconbtn" data-close>✕</button></div>
+    <form id="searchForm" autocomplete="off">
+      <input id="searchInput" placeholder="Flight number, e.g. EY13, DL1553, UA 901, ETD13" autocapitalize="characters" spellcheck="false">
+      <button class="btn primary" type="submit">Find</button>
+    </form>
+    <div id="searchMsg" class="msg"></div>
+    <div id="routeEdit" class="routeedit hidden">
+      <div class="grid2">
+        <label>From (IATA/ICAO)<input id="reFrom" maxlength="4" autocapitalize="characters"></label>
+        <label>To (IATA/ICAO)<input id="reTo" maxlength="4" autocapitalize="characters"></label>
+        <label>Departure (your phone's time)<input id="reDep" type="datetime-local"></label>
+        <label>Flight time (h:mm)<input id="reDur" placeholder="auto"></label>
+      </div>
+      <button id="reApply" class="btn primary">Use this route</button>
+    </div>
+    <div class="offlinebox">
+      <button id="dlBtn" class="btn">⬇︎ Download places for offline</button>
+      <div id="dlProg" class="msg"></div>
+    </div>
+    <h3>Recent</h3>
+    <ul id="recentList" class="recent"></ul>
+    <p class="hint">EY 13 (Abu Dhabi → Atlanta) is built in with its places already on board. Other flights: search while you still have internet, then tap “Download places for offline”.</p>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div id="settingsSheet" class="sheet hidden" role="dialog" aria-label="Settings">
+  <div class="sheetin">
+    <div class="sheethead"><h2>Settings</h2><button class="iconbtn" data-close>✕</button></div>
+    <label class="tog"><input type="checkbox" id="optBig"> Big text</label>
+    <label class="tog"><input type="checkbox" id="optLow"> Low battery / reduced motion</label>
+    <label class="tog"><input type="checkbox" id="optMiles"> Miles instead of km</label>
+    <label class="sel">Position source
+      <select id="optSource"><option value="auto">Auto (live → GPS → schedule)</option><option value="live">Live ADS-B only</option><option value="gps">Phone GPS only</option><option value="est">Schedule estimate only</option></select>
+    </label>
+    <button id="gpsBtn" class="btn">Turn on phone GPS</button>
+    <p class="hint">GPS works in airplane mode. Hold the phone near the window; the first fix can take a few minutes.</p>
+    <label class="sel">ADS-B proxy URL (optional)<input id="optProxy" placeholder="https://…/api/adsb"></label>
+    <p class="hint" id="aboutLine"></p>
+    <button id="resetBtn" class="btn ghost">Clear cached flights</button>
+  </div>
+</div>
+
+<!-- POI detail -->
+<div id="poiSheet" class="sheet hidden" role="dialog" aria-label="Place details">
+  <div class="sheetin">
+    <div class="sheethead"><h2 id="poiTitle"></h2><button class="iconbtn" data-close>✕</button></div>
+    <div id="poiMeta" class="poimeta"></div>
+    <p id="poiBlurb" class="blurb"></p>
+    <a id="poiLink" class="link" target="_blank" rel="noopener">Read on Wikipedia (needs internet)</a>
+  </div>
+</div>
+
+<script src="data/geo.js"></script>
+<script src="data/airports.js"></script>
+<script src="data/airlines.js"></script>
+<script src="data/ey13.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
